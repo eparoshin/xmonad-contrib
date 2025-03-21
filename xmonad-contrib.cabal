@@ -227,6 +227,7 @@ library
                         XMonad.Layout.Accordion
                         XMonad.Layout.AutoMaster
                         XMonad.Layout.AvoidFloats
+                        XMonad.Layout.Bayan
                         XMonad.Layout.BinaryColumn
                         XMonad.Layout.BinarySpacePartition
                         XMonad.Layout.BorderResize
