@@ -21,16 +21,18 @@ instance LayoutClass Bayan Window where
                 | masterIdx < 0 = doLayout' l{bayanMasterIdx = 0} r s
                 | otherwise = let newLayout = maybe (l {bayanPrevStack = Just s}) (handleStack s nMaster masterIdx) prevStack
                                   newMasterIdx = bayanMasterIdx newLayout
-                                in (flip (,) $ Just newLayout) $ (drawWindows r $
-                                    (reverse . fmap fromJust . takeWhile isJust . take (max 0 newMasterIdx) $ ((Just <$> (W.up s)) ++ (reverse $ (Just <$> (W.down s))) ++ [Nothing]))
-                                 ++ (W.focus s)
-                                  : (fmap fromJust . takeWhile isJust . take (max 0 (nMaster - newMasterIdx - 1)) $ ((Just <$> (W.down s)) ++ (reverse $ (Just <$> (W.up s))) ++ [Nothing])))
+                                  ups = drop 1 . cycle $ (((W.focus s) : (W.up s)) ++ (reverse . W.down $ s))
+                                  downs = cycle $ (((W.focus s) : (W.down s)) ++ (reverse . W.up $ s))
+                                  winStart = (reverse . take newMasterIdx $ ups) ++ downs
+                                  winToDraw = (head winStart) : (takeWhile (/= head winStart) . take (nMaster - 1) $ (tail winStart))
+                                in (flip (,) $ Just newLayout) $ (drawWindows r $ winToDraw)
 
             handleStack newStack nMaster masterIdx prevStack
-              | (W.focus prevStack == W.focus newStack) = Bayan nMaster masterIdx (Just newStack)
-              | (not . null . W.up $ newStack) && (W.focus prevStack == (head . W.up $ newStack)) = Bayan nMaster (min (nMaster - 1) (masterIdx + 1)) (Just newStack)
-              | (not . null . W.down $ newStack) && (W.focus prevStack == (head . W.down $ newStack)) = Bayan nMaster (max 0 (masterIdx - 1)) (Just newStack)
-              | otherwise = Bayan nMaster masterIdx (Just newStack)
+                | (W.focus prevStack == W.focus newStack) = Bayan nMaster masterIdx (Just newStack)
+                | (not . null . W.up $ newStack) && (W.focus prevStack == (head . W.up $ newStack)) = Bayan nMaster (min (nMaster - 1) (masterIdx + 1)) (Just newStack)
+                | (not . null . W.down $ newStack) && (W.focus prevStack == (head . W.down $ newStack)) = Bayan nMaster (max 0 (masterIdx - 1)) (Just newStack)
+                | otherwise = Bayan nMaster masterIdx (Just newStack)
+
             drawWindows r windows' = zip windows' (splitVertically (length windows') r)
 
     emptyLayout (Bayan nMaster _ _) _ = return ([], Just $ (Bayan nMaster 0 Nothing))
