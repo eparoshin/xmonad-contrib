@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 module XMonad.Layout.Bayan (
-    Bayan(..)) where
+    Bayan(..), handleStack') where
 
 import XMonad
 import qualified XMonad.StackSet as W
@@ -16,22 +16,36 @@ data Bayan a = Bayan { bayanNMaster :: !Int
 
 instance LayoutClass Bayan Window where
     doLayout l' r' s' = return $ doLayout' l' r' s'
-      where doLayout' l@(Bayan nMaster masterIdx prevStack) r s
+      where makeWindows stack = let ups' = drop 1 . cycle $ (((W.focus stack) : (W.up stack)) ++ (reverse . W.down $ stack))
+                                    downs' = cycle $ (((W.focus stack) : (W.down stack)) ++ (reverse . W.up $ stack))
+                                    in (ups', downs')
+            (ups, downs) = makeWindows s'
+            doLayout' l@(Bayan nMaster masterIdx prevStack) r s
                 | masterIdx >= nMaster = doLayout' l{bayanMasterIdx = nMaster - 1} r s
                 | masterIdx < 0 = doLayout' l{bayanMasterIdx = 0} r s
                 | otherwise = let newLayout = maybe (l {bayanPrevStack = Just s}) (handleStack s nMaster masterIdx) prevStack
                                   newMasterIdx = bayanMasterIdx newLayout
-                                  ups = drop 1 . cycle $ (((W.focus s) : (W.up s)) ++ (reverse . W.down $ s))
-                                  downs = cycle $ (((W.focus s) : (W.down s)) ++ (reverse . W.up $ s))
                                   winStart = (reverse . take newMasterIdx $ ups) ++ downs
                                   winToDraw = (head winStart) : (takeWhile (/= head winStart) . take (nMaster - 1) $ (tail winStart))
                                 in (flip (,) $ Just newLayout) $ (drawWindows r $ winToDraw)
 
-            handleStack newStack nMaster masterIdx prevStack
+            handleStack newStack nMaster masterIdx prevStack = Bayan nMaster (min (nMaster - 1) . max 0 $ compareStacks (-1)) (Just newStack)
+                where (prevUps, prevDowns) = makeWindows prevStack
+                      (_, newDowns) = makeWindows newStack
+                      compareStacks idx | idx > nMaster = masterIdx
+                                        | otherwise =
+                                            let needTake = masterIdx - idx
+                                                begDown = take (nMaster + 2) $ if (needTake >= 0) then ((reverse . take needTake $ prevUps) ++ prevDowns) else (drop (-needTake) prevDowns)
+                                                begNewDown = take (nMaster + 2) $ newDowns
+                                                    in if (and (zipWith (==) begDown begNewDown))
+                                                        then idx
+                                                        else compareStacks (idx + 1)
+{--
                 | (W.focus prevStack == W.focus newStack) = Bayan nMaster masterIdx (Just newStack)
                 | (not . null . W.up $ newStack) && (W.focus prevStack == (head . W.up $ newStack)) = Bayan nMaster (min (nMaster - 1) (masterIdx + 1)) (Just newStack)
                 | (not . null . W.down $ newStack) && (W.focus prevStack == (head . W.down $ newStack)) = Bayan nMaster (max 0 (masterIdx - 1)) (Just newStack)
                 | otherwise = Bayan nMaster masterIdx (Just newStack)
+                --}
 
             drawWindows r windows' = zip windows' (splitVertically (length windows') r)
 
