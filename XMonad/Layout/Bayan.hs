@@ -29,10 +29,10 @@ instance LayoutClass Bayan Window where
                                   winToDraw = (head winStart) : (takeWhile (/= head winStart) . take (nMaster - 1) $ (tail winStart))
                                 in (flip (,) $ Just newLayout) $ (drawWindows r $ winToDraw)
 
-            handleStack newStack nMaster masterIdx prevStack = Bayan nMaster (min (nMaster - 1) . max 0 $ compareStacks (-1)) (Just newStack)
+            handleStack newStack nMaster masterIdx prevStack = Bayan nMaster (min (nMaster - 1) . max 0 $ compareStacks (0)) (Just newStack)
                 where (prevUps, prevDowns) = makeWindows prevStack
                       (_, newDowns) = makeWindows newStack
-                      compareStacks idx | idx > nMaster = masterIdx
+                      compareStacks idx | idx >= nMaster = masterIdx
                                         | otherwise =
                                             let needTake = masterIdx - idx
                                                 begDown = take (nMaster + 2) $ if (needTake >= 0) then ((reverse . take needTake $ prevUps) ++ prevDowns) else (drop (-needTake) prevDowns)
@@ -40,12 +40,6 @@ instance LayoutClass Bayan Window where
                                                     in if (and (zipWith (==) begDown begNewDown))
                                                         then idx
                                                         else compareStacks (idx + 1)
-{--
-                | (W.focus prevStack == W.focus newStack) = Bayan nMaster masterIdx (Just newStack)
-                | (not . null . W.up $ newStack) && (W.focus prevStack == (head . W.up $ newStack)) = Bayan nMaster (min (nMaster - 1) (masterIdx + 1)) (Just newStack)
-                | (not . null . W.down $ newStack) && (W.focus prevStack == (head . W.down $ newStack)) = Bayan nMaster (max 0 (masterIdx - 1)) (Just newStack)
-                | otherwise = Bayan nMaster masterIdx (Just newStack)
-                --}
 
             drawWindows r windows' = zip windows' (splitVertically (length windows') r)
 
